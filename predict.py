@@ -25,8 +25,8 @@ data_deque = {}
 
 deepsort = None
 
-object_counter = {}
-object_counter1 = {}
+object_counter = {}   # product added/ vehicles left
+object_counter1 = {}  # product returned/ vehicles entered
 object_prices = {
     'car': 20000,
     'bus': 15000,
@@ -35,18 +35,18 @@ object_prices = {
 
 line = [(100, 500), (1050, 500)]
 
-speed_line_queue = {}
-def estimatespeed(Location1, Location2):
-    #Euclidean Distance Formula
-    d_pixel = math.sqrt(math.pow(Location2[0] - Location1[0], 2) + math.pow(Location2[1] - Location1[1], 2))
-    # defining thr pixels per meter
-    ppm = 8
-    d_meters = d_pixel/ppm
-    time_constant = 15*3.6
-    #distance = speed/time
-    speed = d_meters * time_constant
+# speed_line_queue = {}
+# def estimatespeed(Location1, Location2):
+#     #Euclidean Distance Formula
+#     d_pixel = math.sqrt(math.pow(Location2[0] - Location1[0], 2) + math.pow(Location2[1] - Location1[1], 2))
+#     # defining thr pixels per meter
+#     ppm = 8
+#     d_meters = d_pixel/ppm
+#     time_constant = 15*3.6
+#     #distance = speed/time
+#     speed = d_meters * time_constant
 
-    return int(speed)
+#     return int(speed)
 
 def init_tracker():
     global deepsort
@@ -129,19 +129,25 @@ def draw_border(img, pt1, pt2, color, thickness, r, d):
     
     return img
 
-def UI_box(x, img, color=None, label=None, line_thickness=None):
+
+def UI_box(x, img, id, obj_name, object_id, object_prices, color=None, line_thickness=None):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
     cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
-    if label:
+    if obj_name:
         tf = max(tl - 1, 1)  # font thickness
-        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+        t_size = cv2.getTextSize(obj_name, 0, fontScale=tl / 3, thickness=tf)[0]
 
-        img = draw_border(img, (c1[0], c1[1] - t_size[1] -3), (c1[0] + t_size[0], c1[1]+3), color, 1, 8, 2)
+        img = draw_border(img, (c1[0], c1[1] - t_size[1] - 3), (c1[0] + t_size[0], c1[1] + 3), color, 1, 8, 2)
 
+        price = object_prices.get(obj_name, 0)
+        label = f'ID: {id}, {obj_name}:${price}'
         cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+
+    return img
+
 
 
 def intersect(A,B,C,D):
@@ -200,7 +206,7 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
         # create new buffer for new object
         if id not in data_deque:
             data_deque[id] = deque(maxlen=64)
-            speed_line_queue[id] = []
+            # speed_line_queue[id] = []
         color = compute_color_for_labels(object_id[i])
         obj_name = names[object_id[i]]
         label = '{}{:d}'.format("", id) + ":" + '%s' % (obj_name)
@@ -209,8 +215,8 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
         data_deque[id].appendleft(center)
         if len(data_deque[id]) >= 2:
             direction = get_direction(data_deque[id][0], data_deque[id][1])
-            object_speed = estimatespeed(data_deque[id][1], data_deque[id][0])
-            speed_line_queue[id].append(object_speed)
+            # object_speed = estimatespeed(data_deque[id][1], data_deque[id][0])
+            # speed_line_queue[id].append(object_speed)
             if intersect(data_deque[id][0], data_deque[id][1], line[0], line[1]):
                 cv2.line(img, line[0], line[1], (255, 255, 255), 3)
                 if "South" in direction:
@@ -224,11 +230,12 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
                     else:
                         object_counter1[obj_name] += 1
 
-        try:
-            label = label + " " + str(sum(speed_line_queue[id]) // len(speed_line_queue[id])) + "km/h"
-        except:
-            pass
-        UI_box(box, img, label=label, color=color, line_thickness=2)
+        # try:
+        #     label = label + " " + str(sum(speed_line_queue[id]) // len(speed_line_queue[id])) + "km/h"
+        # except:
+        #     pass
+        UI_box(box, img, id=id, obj_name=obj_name, object_id=object_id, object_prices=object_prices, color=color, line_thickness=2)
+
         # draw trail
         for i in range(1, len(data_deque[id])):
             # check if on buffer value is none
@@ -248,21 +255,21 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
         cv2.putText(img, cnt_str, (width - 150, 75 + (idx * 40)), 0, 1, [255, 255, 255], thickness=2,
                     lineType=cv2.LINE_AA)
 
-    for idx, (key, value) in enumerate(object_counter1.items()):
+    for idx, (key, value) in enumerate(object_counter1.items()): # product returned/ vehicles entered
         cnt_str1 = str(key) + ":" + str(value)
         cv2.line(img, (20, 25), (500, 25), [85, 45, 255], 40)
         cv2.putText(img, f'Product Returned', (11, 35), 0, 1, [225, 255, 255], thickness=2, lineType=cv2.LINE_AA)
         cv2.line(img, (20, 65 + (idx * 40)), (127, 65 + (idx * 40)), [85, 45, 255], 30)
         cv2.putText(img, cnt_str1, (11, 75 + (idx * 40)), 0, 1, [225, 255, 255], thickness=2, lineType=cv2.LINE_AA)
 
-    total_cost_in = 0
-    for class_name, count in object_counter1.items():
+    total_cost_in = 0   # product returned/ vehicles entered
+    for class_name, count in object_counter1.items():   
       if class_name in object_prices:
         price = object_prices[class_name]
         total_cost_in += count * price
         # print(f"{class_name}: Count={count}, Price={price}, Total Cost={total_cost}")
 
-    total_cost_out = 0
+    total_cost_out = 0     # product added
     for class_name, count in object_counter.items():
       if class_name in object_prices:
         price = object_prices[class_name]
@@ -270,7 +277,35 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
         # print(f"{class_name}: Count={count}, Price={price}, Total Cost={total_cost}")
 
     total_cost_difference = total_cost_in - total_cost_out
-    print(f"Total Cost In: {total_cost_in}, Total Cost Out: {total_cost_out}, Difference: {total_cost_difference}")
+    # print(f"Total Cost In: {total_cost_in}, Total Cost Out: {total_cost_out}, Difference: {total_cost_difference}")
+    
+
+    # Display Total Cost Information
+    total_cost_in_text = f"Total Purchased: {total_cost_in}"
+    total_cost_out_text = f"Total Returned: {total_cost_out}"
+    total_cost_difference_text = f"Amount to be paid: {total_cost_difference}"
+
+    text_size = cv2.getTextSize(total_cost_in_text, 0, fontScale=1, thickness=2)[0]
+    text_x = (img.shape[1] - text_size[0]) // 2  # Center the text horizontally
+    text_y = img.shape[0] // 2 - text_size[1]  # Adjust the vertical position
+
+    # Add color (e.g., red)
+    cv2.putText(img, total_cost_in_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+
+    # Move down for the next line
+    text_y += text_size[1] + 10
+
+    # Display Total Returned
+    text_size = cv2.getTextSize(total_cost_out_text, 0, fontScale=1, thickness=2)[0]
+    cv2.putText(img, total_cost_out_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+
+    # Move down for the next line
+    text_y += text_size[1] + 10
+
+    # Display Amount to be paid
+    text_size = cv2.getTextSize(total_cost_difference_text, 0, fontScale=1, thickness=2)[0]
+    cv2.putText(img, total_cost_difference_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+
 
     return img
 
