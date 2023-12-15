@@ -1,25 +1,18 @@
-# Ultralytics YOLO 🚀, GPL-3.0 license
-
 import hydra
 import torch
-import argparse
-import time
-from pathlib import Path
-import math
-import cv2
-import torch
-import torch.backends.cudnn as cudnn
 from numpy import random
+from pathlib import Path
 from ultralytics.yolo.engine.predictor import BasePredictor
 from ultralytics.yolo.utils import DEFAULT_CONFIG, ROOT, ops
 from ultralytics.yolo.utils.checks import check_imgsz
-from ultralytics.yolo.utils.plotting import Annotator, colors, save_one_box
-
+from ultralytics.yolo.utils.plotting import Annotator
 import cv2
 from deep_sort_pytorch.utils.parser import get_config
 from deep_sort_pytorch.deep_sort import DeepSort
 from collections import deque
 import numpy as np
+
+
 palette = (2 ** 11 - 1, 2 ** 15 - 1, 2 ** 20 - 1)
 data_deque = {}
 
@@ -28,25 +21,12 @@ deepsort = None
 object_counter = {}   # product added/ vehicles left
 object_counter1 = {}  # product returned/ vehicles entered
 object_prices = {
-    'car': 20000,
-    'bus': 15000,
-    'motorbike': 10000,
+    'car': 20,
+    'bus': 15,
 }
 
+# line = [(650, 0), (650, 720)]
 line = [(100, 500), (1050, 500)]
-
-# speed_line_queue = {}
-# def estimatespeed(Location1, Location2):
-#     #Euclidean Distance Formula
-#     d_pixel = math.sqrt(math.pow(Location2[0] - Location1[0], 2) + math.pow(Location2[1] - Location1[1], 2))
-#     # defining thr pixels per meter
-#     ppm = 8
-#     d_meters = d_pixel/ppm
-#     time_constant = 15*3.6
-#     #distance = speed/time
-#     speed = d_meters * time_constant
-
-#     return int(speed)
 
 def init_tracker():
     global deepsort
@@ -149,7 +129,6 @@ def UI_box(x, img, id, obj_name, object_id, object_prices, color=None, line_thic
     return img
 
 
-
 def intersect(A,B,C,D):
     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
 
@@ -182,7 +161,7 @@ def get_direction(point1, point2):
 
 # Inside the draw_boxes function:
 def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
-    cv2.line(img, line[0], line[1], (46,162,112), 3)
+    cv2.line(img, line[0], line[1], (255,255,255), 2)
 
     height, width, _ = img.shape
     # remove tracked point from buffer if object is lost
@@ -230,21 +209,7 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
                     else:
                         object_counter1[obj_name] += 1
 
-        # try:
-        #     label = label + " " + str(sum(speed_line_queue[id]) // len(speed_line_queue[id])) + "km/h"
-        # except:
-        #     pass
         UI_box(box, img, id=id, obj_name=obj_name, object_id=object_id, object_prices=object_prices, color=color, line_thickness=2)
-
-        # draw trail
-        for i in range(1, len(data_deque[id])):
-            # check if on buffer value is none
-            if data_deque[id][i - 1] is None or data_deque[id][i] is None:
-                continue
-            # generate dynamic thickness of trails
-            thickness = int(np.sqrt(64 / float(i + i)) * 1.5)
-            # draw trails
-            cv2.line(img, data_deque[id][i - 1], data_deque[id][i], color, thickness)
 
     # 4. Display Count in top right corner
     for idx, (key, value) in enumerate(object_counter.items()):
@@ -281,30 +246,34 @@ def draw_boxes(img, bbox, names, object_id, identities=None, offset=(0, 0)):
     
 
     # Display Total Cost Information
-    total_cost_in_text = f"Total Purchased: {total_cost_in}"
-    total_cost_out_text = f"Total Returned: {total_cost_out}"
-    total_cost_difference_text = f"Amount to be paid: {total_cost_difference}"
+    total_cost_in_text = f"Total Purchased: ${total_cost_in}"
+    total_cost_out_text = f"Total Returned: ${total_cost_out}"
+    total_cost_difference_text = f"Amount to be paid: ${total_cost_difference}"
+
 
     text_size = cv2.getTextSize(total_cost_in_text, 0, fontScale=1, thickness=2)[0]
     text_x = (img.shape[1] - text_size[0]) // 2  # Center the text horizontally
     text_y = img.shape[0] // 2 - text_size[1]  # Adjust the vertical position
 
     # Add color (e.g., red)
-    cv2.putText(img, total_cost_in_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+    cv2.line(img, (435, 325), (880, 325), [85, 45, 255], 30)
+    cv2.putText(img, total_cost_in_text, (text_x, text_y), 0, 1, [255, 255, 255], thickness=2, lineType=cv2.LINE_AA)
 
     # Move down for the next line
     text_y += text_size[1] + 10
 
     # Display Total Returned
+    cv2.line(img, (435, 358), (880, 358), [85, 45, 255], 30)
     text_size = cv2.getTextSize(total_cost_out_text, 0, fontScale=1, thickness=2)[0]
-    cv2.putText(img, total_cost_out_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+    cv2.putText(img, total_cost_out_text, (text_x, text_y), 0, 1, [255, 255, 255], thickness=2, lineType=cv2.LINE_AA)
 
     # Move down for the next line
     text_y += text_size[1] + 10
 
     # Display Amount to be paid
+    cv2.line(img, (435, 390), (880, 390), [85, 45, 255], 30)
     text_size = cv2.getTextSize(total_cost_difference_text, 0, fontScale=1, thickness=2)[0]
-    cv2.putText(img, total_cost_difference_text, (text_x, text_y), 0, 1, [0, 0, 255], thickness=2, lineType=cv2.LINE_AA)
+    cv2.putText(img, total_cost_difference_text, (text_x, text_y), 0, 1, [255, 255, 255], thickness=2, lineType=cv2.LINE_AA)
 
 
     return img
