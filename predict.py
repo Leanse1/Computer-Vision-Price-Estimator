@@ -12,21 +12,17 @@ from deep_sort_pytorch.deep_sort import DeepSort
 from collections import deque
 import numpy as np
 
-
 palette = (2 ** 11 - 1, 2 ** 15 - 1, 2 ** 20 - 1)
 data_deque = {}
-
 deepsort = None
 
 object_counter = {}   # product added/ vehicles left
 object_counter1 = {}  # product returned/ vehicles entered
 object_prices = {
-    'car': 20,
-    'bus': 15,
+    'candy': 20
 }
 
-# line = [(650, 0), (650, 720)]
-line = [(100, 500), (1050, 500)]
+line = [(425, 0), (425, 480)]
 
 def init_tracker():
     global deepsort
