@@ -1,3 +1,8 @@
+## Usage
+
+- Run the app with the following command: `streamlit run app.py`
+- The app should open in a new browser window.
+
 This is a prototype on how computer vision will scan objects and calculate price
 
 ![download (35)](https://github.com/Leanse1/Amazon-Go-Prototype/assets/138543566/448e44dd-4a50-43ff-9c75-03cb80d9acbd)
