@@ -1,7 +1,8 @@
 ## Usage
 
-- Run the app with the following command: `streamlit run app.py`
-- The app should open in a new browser window.
+-  Train your custom dataset.
+-  In `predict.py` file add price for dataset you want to sum up
+-  Run the program.
 
 This is a prototype on how computer vision will scan objects and calculate price
 
